@@ -420,8 +420,9 @@ function drawTap(){
   el('rect', { x:-4, y:160, width:183, height:12, rx:4, fill:'#b0bec5', stroke:'#546e7a', 'stroke-width':2 }, g);
   el('path', { d:'M0 172 L175 172 L160 268 L15 268 Z', fill:'#cfd8dc', stroke:'#546e7a', 'stroke-width':3 }, g);
   el('ellipse', { cx:87, cy:262, rx:14, ry:4, fill:'#455a64' }, g);
-  el('rect', { x:2, y:278, width:171, height:28, rx:5, fill:'#fff', stroke:'#0d47a1', 'stroke-width':1.5 }, g);
-  txt(g, 87, 298, 'Distilled water tap', { 'text-anchor':'middle', 'font-size':16, 'font-weight':800, fill:'#0d2a4a' });
+  el('rect', { x:-30, y:16, width:104, height:46, rx:5, fill:'#fff', stroke:'#0d47a1', 'stroke-width':1.5 }, g);
+  txt(g, 70, 34, 'Distilled', { 'text-anchor':'end', 'font-size':16, 'font-weight':800, fill:'#0d2a4a' });
+  txt(g, 70, 54, 'water tap →', { 'text-anchor':'end', 'font-size':16, 'font-weight':800, fill:'#0d2a4a' });
   txt(g, 87, 205, 'Sink', { 'text-anchor':'middle', 'font-size':16, 'font-weight':700, fill:'#37474f' });
 }
 function sinkZone(){ return { x:S.tapX - 10, y:60, w:195, h:250 }; }
@@ -709,9 +710,10 @@ function makeShakeBtn(){
    FEEDBACK + STATS
    ===================================================================== */
 function showMsg(kind, text){
-  const m = $('#msg'); m.className = kind; m.textContent = text;
-  const li = document.createElement('li'); li.className = kind; li.textContent = text;
-  const log = $('#log'); log.prepend(li); while (log.children.length > 6) log.lastChild.remove();
+  const m = $('#msg');
+  if (m.textContent){ const li = document.createElement('li'); li.className = m.className; li.textContent = m.textContent; $('#log').prepend(li); }
+  m.className = kind; m.textContent = text;
+  const log = $('#log'); while (log.children.length > 6) log.lastChild.remove();
 }
 function ok(o, text){ S.stats.ok++; showMsg('ok', text); flash(o, true); }
 function err(o, text){ S.stats.err++; showMsg('err', text); flash(o, false); }
@@ -1324,7 +1326,7 @@ function initTab(tab){
   if (tab === 'ui') buildUI(); else if (tab === 'paper') buildPaper(); else buildMeter();
   if (tab === 'ui') makeShakeBtn();
   updateTile();
-  $('#steps').innerHTML = ''; $('#log').innerHTML = ''; $('#summary').innerHTML = '';
+  $('#steps').innerHTML = ''; $('#log').innerHTML = ''; $('#msg').textContent = ''; $('#summary').innerHTML = '';
   buildTable();
   lab.classList.toggle('locked', !S.goggles);
   if (S.goggles) showMsg('info', CONFIG.intro[tab]); else showMsg('err', CONFIG.msg.gogglesFirst + ' Drag the goggles onto the person at the top right.');
