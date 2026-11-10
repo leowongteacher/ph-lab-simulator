@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pH Testing Lab Simulator</title>
+<style>
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-width:768px;padding:8px 8px 20px 8px;font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#14202b;background:#e7edf2}
+h1,h2,h3{margin:0}
+/* ---------- header ---------- */
+header{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:8px 10px;align-items:center;margin-bottom:8px}
+.banner{display:flex;align-items:center;gap:10px;background:#fff4d6;border:2px solid #b7791f;border-radius:10px;padding:8px 12px;font-weight:700;font-size:18px;color:#5a3a00}
+.banner .title{margin-left:auto;font-size:18px;color:#1f4e79}
+#safety{grid-column:2;grid-row:1 / span 2;display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;padding:4px 10px 4px 4px;border:2px solid #cbd5df}
+#personSvg{touch-action:none;-webkit-user-select:none;user-select:none;display:block}
+#gogStatus{font-weight:800;padding:8px 10px;border-radius:8px;width:150px;text-align:center;font-size:16px}
+#gogStatus.bad{background:#fde2e2;color:#9f1a1a;border:2px solid #e35d5d}
+#gogStatus.good{background:#dcf5e3;color:#11602b;border:2px solid #31a354}
+.pulse{animation:pulse .5s 3}
+@keyframes pulse{50%{transform:scale(1.08)}}
+#tabs{display:flex;gap:6px;flex-wrap:wrap}
+#tabs button{font:inherit;font-size:17px;font-weight:700;padding:10px 16px;border-radius:10px;border:2px solid #9fb0c0;background:#f7f9fb;color:#1d2b38;cursor:pointer;min-height:46px}
+#tabs button.active{background:#1f4e79;color:#fff;border-color:#1f4e79}
+#tabs button .done{color:#16a34a;font-weight:900}
+#tabs button.active .done{color:#9ef0b5}
+/* ---------- layout ---------- */
+#main,#quiz,footer{margin-right:146px}
+#main{display:grid;grid-template-columns:minmax(612px,1fr) 330px;grid-template-areas:"lab panel" "table table";gap:10px;align-items:start}
+#labWrap{grid-area:lab;min-width:0}
+#panel{grid-area:panel;display:flex;flex-direction:column;gap:10px}
+#tableCard{grid-area:table}
+@media (max-width:1199px){
+  .banner .title{display:none}
+  #main{grid-template-columns:1fr;grid-template-areas:"lab" "panel" "table"}
+  #panel{display:grid;grid-template-columns:1fr 1fr}
+}
+#lab{display:block;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+#lab text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.halo{paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}
+#lab .obj{cursor:grab}
+#lab.locked .obj,#lab.locked .strip{opacity:.42;cursor:not-allowed}
+#L_fx{pointer-events:none}
+.card{background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #cdd6df}
+.card h2{font-size:18px;margin-bottom:8px;color:#1f4e79}
+/* steps */
+#steps{list-style:none;margin:0;padding:0}
+#steps li{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid #eef1f4}
+#steps li:last-child{border-bottom:0}
+.tick{flex:none;width:28px;height:28px;border-radius:50%;border:2px solid #8a99a8;display:grid;place-items:center;font-weight:900;color:#fff;font-size:16px;background:#fff}
+#steps li.done .tick{background:#16a34a;border-color:#16a34a}
+#steps li.pop .tick{animation:pop .6s ease}
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.6)}100%{transform:scale(1)}}
+#steps li.done .stxt{color:#3b4b5c}
+.count{margin-left:auto;font-weight:800;color:#334155;white-space:nowrap;padding-left:6px}
+/* feedback */
+#msg{border-radius:10px;padding:10px 12px;font-weight:600;min-height:70px;border-left:7px solid #64748b;background:#f1f5f9}
+#msg.ok{background:#e1f5e6;color:#0c5223;border-color:#16a34a}
+#msg.err{background:#fde4e4;color:#8b1414;border-color:#dc2626}
+#msg.warn{background:#fff1dc;color:#7a3e00;border-color:#d97706}
+#msg.info{background:#e3edfc;color:#173e7a;border-color:#2563eb}
+#stats{margin-top:8px;font-weight:700;color:#1e293b}
+#log{list-style:none;margin:8px 0 0;padding:0;max-height:150px;overflow:auto}
+#log li{font-size:16px;padding:3px 0 3px 8px;border-left:4px solid #cbd5e1;margin-bottom:3px;color:#334155}
+#log li.ok{border-color:#16a34a}#log li.err{border-color:#dc2626}#log li.warn{border-color:#d97706}#log li.info{border-color:#2563eb}
+#summary .card{border:2px solid #16a34a;background:#effbf2}
+/* record table */
+table.rec{width:100%;border-collapse:collapse}
+.rec th,.rec td{border:1px solid #cfd8e1;padding:6px 8px;text-align:left;font-size:16px;vertical-align:middle}
+.rec th{background:#eef3f8}
+.rec tr.done td{background:#effbf2}
+select,input,button{font:inherit;font-size:16px}
+.rec select,.rec input{min-height:42px;padding:4px 6px;border:2px solid #94a3b8;border-radius:8px;background:#fff}
+.rec input{width:96px}
+.btn{min-height:44px;padding:8px 16px;border-radius:10px;border:2px solid #1f4e79;background:#1f4e79;color:#fff;font-weight:700;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.light{background:#fff;color:#1f4e79}
+.swatch{display:inline-block;width:30px;height:24px;border-radius:5px;border:1.5px solid #222;vertical-align:middle;margin-right:6px}
+.st{font-weight:900;font-size:18px;margin-left:6px}
+.st.ok{color:#15803d}.st.bad{color:#b91c1c}
+.muted{color:#475569}
+/* chart */
+#chart{position:fixed;top:140px;right:8px;width:136px;max-height:calc(100vh - 148px);overflow:auto;background:#fff;border:2px solid #334155;border-radius:12px;padding:8px 6px;z-index:20;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+#chart h2{font-size:17px;text-align:center;line-height:1.2;margin-bottom:6px;color:#0f172a}
+#chart table{border-collapse:separate;border-spacing:2px;width:100%}
+#chart th,#chart td{font-size:16px;padding:0;text-align:center;height:26px}
+#chart th{font-weight:800;border-radius:4px}
+#chart td.n{font-weight:800;width:30px}
+#chart th.c-ui,#chart th.c-paper,#chart td.c{width:44px}
+#chart td.c{border-radius:4px;border:1px solid rgba(0,0,0,.25)}
+#chart.hl-ui th.c-ui,#chart.hl-paper th.c-paper{background:#1f4e79;color:#fff}
+#chart.hl-ui td.c-ui,#chart.hl-paper td.c-paper{box-shadow:inset 0 0 0 2px #fff,0 0 0 2px #111}
+.legend{margin-top:6px;font-size:16px;line-height:1.3}
+.legend div{display:flex;align-items:center;gap:4px;margin-bottom:3px}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:3px;flex:none}
+/* quiz */
+#quiz{margin-top:10px}
+.q{border:1px solid #cdd6df;border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.q h3{font-size:17px;margin-bottom:8px}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{text-align:left;min-height:44px;padding:8px 12px;border-radius:8px;border:2px solid #94a3b8;background:#f8fafc;cursor:pointer;color:#0f172a}
+.opt.right{background:#dcfce7;border-color:#16a34a}
+.opt.wrong{background:#fee2e2;border-color:#dc2626}
+.expl{margin-top:8px;font-weight:600}
+.expl.ok{color:#14532d}.expl.bad{color:#7f1d1d}
+table.cmp{width:100%;border-collapse:collapse;margin-top:8px}
+.cmp th,.cmp td{border:1px solid #cfd8e1;padding:8px;text-align:left;vertical-align:top;font-size:16px}
+.cmp th{background:#1f4e79;color:#fff}
+footer{margin-top:12px;display:flex;gap:10px;align-items:center}
+#restart{font-size:18px;min-height:50px;padding:10px 28px;background:#b91c1c;border-color:#b91c1c}
+/* SVG animations */
+.liq{transition:fill 1s ease}
+.band{transition:opacity .9s ease,fill .3s}
+.tubebg{transition:opacity .3s}
+.tilehl{transition:opacity .3s}
+.tuberot{transform-box:fill-box;transform-origin:50% 100%;transition:transform .3s}
+.shaking{animation:tshake .8s ease-in-out}
+@keyframes tshake{0%,100%{transform:rotate(0)}15%{transform:rotate(-12deg)}35%{transform:rotate(12deg)}55%{transform:rotate(-10deg)}75%{transform:rotate(8deg)}90%{transform:rotate(-4deg)}}
+.indrot{transform-box:fill-box;transform-origin:50% 50%;transition:transform .35s}
+.paperfill{transition:fill 1s ease}
+.errshake{animation:eshake .45s}
+@keyframes eshake{20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(4px)}}
+.flash{fill:none;stroke-width:6;animation:flash .9s ease-out forwards}
+.flash.ok{stroke:#22c55e}.flash.err{stroke:#ef4444}
+@keyframes flash{0%{opacity:0}20%{opacity:1}100%{opacity:0}}
+.stream{stroke:#5fb8ee;stroke-width:12;stroke-linecap:round;stroke-dasharray:18 7;animation:flow .35s linear infinite;opacity:.85}
+@keyframes flow{to{stroke-dashoffset:-25}}
+.splash{fill:#9fd6f6;animation:splash .4s ease-in-out infinite alternate}
+@keyframes splash{from{opacity:.4}to{opacity:.95}}
+.halo-green{fill:none;stroke:#22c55e;stroke-width:8;animation:flash 1.2s ease-out forwards}
+.wellnum.glow{animation:numglow .9s ease 2}
+@keyframes numglow{50%{fill:#16a34a}}
+</style>
+</head>
+<body>
+<header>
+  <div class="banner">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><path d="M17 2 L32 30 H2 Z" fill="#f59e0b" stroke="#7c4a03" stroke-width="2"/><text x="17" y="27" text-anchor="middle" font-size="18" font-weight="900" fill="#000">!</text></svg>
+    <span>Wear a lab coat and safety goggles.</span>
+    <span class="title">pH Testing Lab Simulator</span>
+  </div>
+  <div id="safety">
+    <svg id="personSvg" width="270" height="118" viewBox="0 0 270 118" aria-label="Person and safety goggles"></svg>
+    <div id="gogStatus" class="bad">Put on safety goggles first.</div>
+  </div>
+  <nav id="tabs">
+    <button data-tab="ui">Universal Indicator <span class="done"></span></button>
+    <button data-tab="paper">pH Paper <span class="done"></span></button>
+    <button data-tab="meter">pH Meter <span class="done"></span></button>
+  </nav>
+</header>
+
+<div id="main">
+  <section id="labWrap"><svg id="lab" xmlns="http://www.w3.org/2000/svg"></svg></section>
+  <section id="panel">
+    <div class="card"><h2>Steps</h2><ol id="steps"></ol></div>
+    <div class="card">
+      <h2>Feedback</h2>
+      <div id="msg" class="info"></div>
+      <div id="stats"></div>
+      <ul id="log"></ul>
+      <div id="summary"></div>
+    </div>
+  </section>
+  <section id="tableCard" class="card">
+    <h2>Results table</h2>
+    <table class="rec">
+      <thead><tr><th>Substance</th><th id="col2h">Colour / Reading</th><th>pH</th><th>Acidic / Neutral / Alkaline</th><th>Check</th></tr></thead>
+      <tbody id="recBody"></tbody>
+    </table>
+  </section>
+</div>
+
+<section id="quiz" class="card" hidden></section>
+
+<footer>
+  <button id="restart" class="btn">Restart</button>
+  <span class="muted">Restart resets the current experiment only (goggles stay on).</span>
+</footer>
+
+<aside id="chart" aria-label="pH colour chart"></aside>
+
+<script>
+'use strict';
+/* =====================================================================
+   CONFIG — teachers only need to edit this object
+   ===================================================================== */
+const CONFIG = {
+  substances: [
+    { id:'hcl',   name:'HCl (dilute)',           shelf:['HCl (dilute)'],             beaker:['HCl','(dilute)'],         pH:1,    liquid:'#cfe8f8', hazard:true },
+    { id:'lemon', name:'Lemon juice',            shelf:['Lemon juice'],              beaker:['Lemon','juice'],          pH:2.5,  liquid:'#f3e98a', hazard:false },
+    { id:'eth',   name:'Ethanoic acid (dilute)', shelf:['Ethanoic acid','(dilute)'], beaker:['Ethanoic','acid (dilute)'], pH:3,  liquid:'#cfe8f8', hazard:true },
+    { id:'water', name:'Distilled water',        shelf:['Distilled water'],          beaker:['Distilled','water'],      pH:7,    liquid:'#d6ecfa', hazard:false },
+    { id:'glass', name:'Glass cleaner',          shelf:['Glass cleaner'],            beaker:['Glass','cleaner'],        pH:10.5, liquid:'#8fcff4', hazard:true }
+  ],
+  tubeLetters: ['A','B','C','D','E'],
+  // Colour charts for pH 0–14 (index = pH)
+  colours: {
+    ui:    ['#a3001b','#e01b1f','#ef4a22','#f6801f','#fbb216','#f6dc17','#c3d82b','#3fae2f','#169a76','#1e86bf','#2a5cb2','#3a3d9e','#582a92','#6b1f86','#4a1461'],
+    paper: ['#9e2f37','#c63d31','#d0613a','#da873a','#dea43c','#d6b843','#b2b447','#73a24b','#4c9469','#3d8689','#3d6c98','#455699','#55468d','#5c3b7e','#472d63'],
+    names: ['dark red','red','red-orange','orange','orange-yellow','yellow','yellow-green','green','blue-green','blue','dark blue','indigo','violet','purple','dark purple'],
+    paperUnused: '#f0c766',        // colour of dry pH paper
+    indicatorLiquid: '#3f8f3a'     // universal indicator solution in the bottle
+  },
+  volume: {
+    tubeTarget: 2, tubeMin: 1.8, tubeMax: 2.2, tubeCap: 5,     // cm³
+    dropperCap: 2, dropsPerFill: 4,                            // one fill = 2 cm³ = 4 drops into a tube
+    indicatorDrops: 3, indicatorDropVol: 0.05,
+    paperDrops: 2, paperDropVol: 0.05, wellCap: 0.15,
+    bottleStart: 50, bottleCap: 60, bottleRefillBelow: 10,
+    beakerStart: 50, beakerCap: 100, probeDisplace: 4
+  },
+  tolerance: { colour: 1, meter: 0.1 },        // accepted difference when recording pH
+  meter: { error: 0.03, stabiliseMs: 2600, contaminationShift: 0.35 },
+  quizUnlock: 'all',                            // 'all' = after all 3 tabs; 'any' = after any 1 tab
+  classify(pH){ return pH < 7 ? 'Acidic' : (pH === 7 ? 'Neutral' : 'Alkaline'); },
+  // colour interpolation function: scale = 'ui' | 'paper'
+  colourAt(scale, pH){
+    const arr = this.colours[scale]; const p = Math.max(0, Math.min(14, pH));
+    const i = Math.floor(p), t = p - i;
+    return i >= 14 ? arr[14] : mixHex(arr[i], arr[i + 1], t);
+  },
+  steps: {
+    ui: [
+      'Put on safety goggles (drag them onto the person).',
+      'Use the dropper to add 2 cm³ of each substance to its test tube (A–E). Rinse the dropper at the tap before changing substance.',
+      'Add 3 drops of universal indicator to each test tube.',
+      'Shake each test tube gently.',
+      'Move each test tube onto the white tile to observe the colour.',
+      'Compare with the colour chart. Record the pH and type.'
+    ],
+    paper: [
+      'Put on safety goggles (drag them onto the person).',
+      'Check spot plate holes 1–5: place the spot plate on the white tile.',
+      'Use the forceps to put a piece of pH paper into each hole.',
+      'Use the dropper to add 2 drops of the substance onto the pH paper (hole 1 = HCl … hole 5 = glass cleaner).',
+      'Observe the colour, compare it with the colour chart and record the pH.',
+      'Repeat for the next hole. Rinse the dropper at the tap before each new substance.'
+    ],
+    meter: [
+      'Put on safety goggles (drag them onto the person).',
+      'Rinse the probe under the distilled water tap.',
+      'Dip the probe into a substance beaker.',
+      'Wait until the reading is stable, then record it in the results table.',
+      'Rinse the probe before the next substance. Test all five.'
+    ]
+  },
+  intro: {
+    ui: 'Universal indicator: fill the dropper from a bottle on the shelf, then drop it over the matching test tube.',
+    paper: 'pH paper: first drag the spot plate onto the white tile, then use the forceps to place pH paper in each hole.',
+    meter: 'pH meter: drag the probe under the distilled water tap to rinse it, then dip it into a beaker.'
+  },
+  msg: {
+    gogglesFirst: 'Put on safety goggles first.',
+    gogglesOn: 'Goggles on. Your eyes are protected from splashes — you can start the experiment.',
+    tileFirst: 'Place the test tube on the white tile to see the true colour.',
+    plateTileFirst: 'Place the spot plate on the white tile to see the true colour.',
+    contamDropper: 'Contamination! The dropper still has traces of {old}. Rinse it under the distilled water tap before taking {new}, otherwise the substances mix and change the pH.',
+    wrongTube: 'Tube {tube} is for {sub}. Putting a different substance in it would give the wrong result.',
+    wrongHole: 'Hole {hole} is for {sub}. Use the matching substance for each hole.',
+    tooMuch: 'Too much! Tube {tube} now has {vol} cm³ (target 2 cm³). Pour it into the waste beaker, rinse the tube at the tap, then add 2 cm³ again.',
+    tooManyDrops: 'Too many drops of indicator ({n}). Extra indicator makes the colour too dark and harder to match with the chart. Use exactly 3 drops.',
+    handPaper: 'Use the forceps! Never touch pH paper with your fingers — sweat and grease on your skin can change its colour.',
+    dipPaper: 'Never dip pH paper into a bottle or beaker! The dye can dissolve out and contaminate the solution.',
+    probeContam: 'The probe was not rinsed! Traces of {old} are mixing with {new}, so this reading is wrong. Rinse the probe at the tap and measure again.'
+  },
+  quiz: [
+    { q: 'Q1. Which apparatus gives the most precise pH value?',
+      options: ['Universal indicator', 'pH paper', 'pH meter'], answer: 2,
+      explain: 'A pH meter shows a number to 1 decimal place, while universal indicator and pH paper only give about ±1 pH unit by comparing colours by eye.' },
+    { q: 'Q2. Why should pH paper NOT be dipped directly into a solution?',
+      options: ['It makes the paper dry too slowly', 'The dye can dissolve out and contaminate the solution', 'pH paper only works in air'], answer: 1,
+      explain: 'Dipping lets the indicator dye leak into the solution, contaminating it and wasting the sample. Put a drop of solution on the paper instead.' },
+    { q: 'Q3. Why must the pH meter probe be rinsed before testing another liquid?',
+      options: ['To avoid cross-contamination, which gives a wrong reading', 'To cool down the probe', 'To make the screen brighter'], answer: 0,
+      explain: 'Liquid left on the probe mixes with the next sample and changes its pH, so the reading would be wrong (cross-contamination).' }
+  ],
+  compare: {
+    headers: ['Apparatus', 'How precise?', 'Advantages', 'Limitations'],
+    rows: [
+      ['Universal indicator', 'About ±1 pH unit (colour)', 'Cheap; colour change easy to see; shows the whole range of pH', 'Colour judged by eye; adds dye to the sample; hard to use with coloured liquids'],
+      ['pH paper', 'About ±1 pH unit (colour)', 'Quick, cheap and portable; needs only 1–2 drops', 'Colour judged by eye; cannot be dipped into the solution; must be handled with forceps'],
+      ['pH meter', 'About ±0.1 pH unit (number)', 'Most precise; gives a number; works with coloured liquids', 'Expensive and fragile; probe must be rinsed (and calibrated); needs time to stabilise']
+    ]
+  }
+};
+
+/* =====================================================================
+   Small helpers
+   ===================================================================== */
+const NS = 'http://www.w3.org/2000/svg';
+const $ = s => document.querySelector(s);
+function el(tag, attrs, parent){ const e = document.createElementNS(NS, tag); if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function txt(parent, x, y, str, attrs){ const t = el('text', Object.assign({ x, y }, attrs || {}), parent); t.textContent = str; return t; }
+const LBL16 = { 'text-anchor':'middle', 'font-size':16, 'font-weight':700, fill:'#13202c', class:'halo' };
+const LBL18 = { 'text-anchor':'middle', 'font-size':18, 'font-weight':800, fill:'#000' };
+function hexRgb(h){ h = h.replace('#',''); return [0,2,4].map(i => parseInt(h.substr(i,2),16)); }
+function rgbHex(a){ return '#' + a.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2,'0')).join(''); }
+function mixHex(a, b, t){ const x = hexRgb(a), y = hexRgb(b); return rgbHex(x.map((v,i) => v + (y[i]-v)*t)); }
+function fmt(s, o){ return s.replace(/\{(\w+)\}/g, (m,k) => o[k]); }
+function inRect(p, r){ return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
+function subById(id){ return CONFIG.substances.find(s => s.id === id); }
+const V = CONFIG.volume;
+
+/* =====================================================================
+   Tween engine (requestAnimationFrame interpolation)
+   ===================================================================== */
+const tweens = new Map();
+function tween(key, from, to, dur, apply, done){
+  if (dur <= 0){ apply(to); tweens.delete(key); if (done) done(); return; }
+  tweens.set(key, { from, to, dur, t0: performance.now(), apply, done });
+}
+function frame(now){
+  for (const [k, tw] of tweens){
+    const p = Math.min(1, (now - tw.t0) / tw.dur);
+    const e = p < .5 ? 2*p*p : 1 - Math.pow(-2*p + 2, 2) / 2;
+    tw.apply(tw.from + (tw.to - tw.from) * e);
+    if (p >= 1){ tweens.delete(k); if (tw.done) tw.done(); }
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* volume → level: every container has o.vol (target) and o.disp (displayed); o.apply(v) sets rect y/height */
+function setVol(o, v, dur){
+  o.vol = Math.max(0, v);
+  tween('lv' + o.id, o.disp, o.vol, dur == null ? 450 : dur, val => { o.disp = val; o.apply(val); });
+}
+
+/* =====================================================================
+   STATE
+   ===================================================================== */
+const S = {
+  tab: 'ui', goggles: false, W: 800, H: 760, tapX: 600,
+  objs: {}, stats: { ok: 0, err: 0 }, completed: {}, quiz: {},
+  timers: [], sel: null, prevDone: [], tubes: [], bottles: [], meterRead: null, meterTimer: null
+};
+const L = {};               // SVG layers
+let lab, defs, dropN = 0;
+function later(fn, ms){ const id = setTimeout(fn, ms); S.timers.push(id); return id; }
+
+/* =====================================================================
+   RENDER — lab drawing
+   ===================================================================== */
+function measure(){
+  const w = Math.floor($('#labWrap').clientWidth);
+  S.W = Math.max(612, w);
+  S.tapX = S.W - 195;
+  lab.setAttribute('width', S.W); lab.setAttribute('height', S.H);
+  lab.setAttribute('viewBox', `0 0 ${S.W} ${S.H}`);
+}
+
+function newObj(id, type, x, y, layer, props){
+  const o = Object.assign({ id, type, x, y, drag: true }, props || {});
+  o.g = el('g', { 'data-id': id, class: o.drag ? 'obj' : 'static' }, layer);
+  o.body = el('g', {}, o.g);
+  S.objs[id] = o;
+  return o;
+}
+function finishObj(o){ if (o.apply){ o.disp = o.vol; o.apply(o.vol); } place(o); return o; }
+function place(o){
+  o.g.setAttribute('transform', `translate(${o.x.toFixed(1)},${o.y.toFixed(1)})`);
+  if (o.type === 'probe') updateWire();
+  if (S.sel === o) updateShakeBtn();
+}
+function moveObj(o, x, y, dur){
+  const sx = o.x, sy = o.y;
+  tween('mv' + o.id, 0, 1, dur == null ? 250 : dur, p => { o.x = sx + (x - sx)*p; o.y = sy + (y - sy)*p; place(o); });
+}
+
+function drawDesk(){
+  S.bench = el('rect', { x:0, y:0, width:S.W, height:S.H, fill:'#dcc49c' }, L.bg);
+  S.grain = el('g', {}, L.bg);
+  for (let y = 40; y < S.H; y += 52) el('path', { d:`M190 ${y} Q 600 ${y+10} 2000 ${y-6}`, stroke:'#cdb084', 'stroke-width':2, fill:'none' }, S.grain);
+  el('rect', { x:0, y:0, width:190, height:S.H, fill:'#6d4c41' }, L.bg);
+  el('rect', { x:186, y:0, width:6, height:S.H, fill:'#4e342e' }, L.bg);
+}
+
+/* Reagent bottles on the shelf (targets, fixed in place) */
+function drawShelf(){
+  txt(L.bg, 95, 27, 'Substance shelf', { 'text-anchor':'middle', 'font-size':18, 'font-weight':800, fill:'#fff' });
+  S.bottles = [];
+  CONFIG.substances.forEach((s, i) => {
+    const sy = 44 + i*134, bx = 52;
+    el('rect', { x:6, y:sy+130, width:178, height:6, rx:2, fill:'#3e2723' }, L.bg);
+    const o = { id:'bottle'+i, type:'bottle', sub:s, i, slotY:sy, vol:V.bottleStart, cap:V.bottleCap, x:0, y:0 };
+    o.g = el('g', { class:'bottle' }, L.low); o.body = el('g', {}, o.g);
+    const b = o.body;
+    el('rect', { x:bx+16, y:sy, width:28, height:13, rx:3, fill:'#263238' }, b);                       // cap
+    el('rect', { x:bx+21, y:sy+12, width:18, height:12, fill:'#eef5fa', stroke:'#4f6475', 'stroke-width':2 }, b); // neck
+    const cid = 'bclip'+i; const cp = el('clipPath', { id:cid }, defs);
+    el('rect', { x:bx+2, y:sy+24, width:56, height:50, rx:8 }, cp);
+    o.liq = el('rect', { x:bx, y:sy+40, width:60, height:30, fill:s.liquid, 'clip-path':`url(#${cid})` }, b);
+    el('rect', { x:bx, y:sy+22, width:60, height:54, rx:9, fill:'rgba(235,245,252,.25)', stroke:'#37474f', 'stroke-width':2.5 }, b);
+    el('rect', { x:bx+8, y:sy+28, width:6, height:40, rx:3, fill:'rgba(255,255,255,.6)' }, b);      // glass shine
+    o.apply = v => { const h = v / o.cap * 48; o.liq.setAttribute('y', sy + 74 - h); o.liq.setAttribute('height', h); };
+    if (s.hazard){                                                                                   // simple hazard sign
+      const hx = bx + 92, hy = sy + 46;
+      el('rect', { x:-12, y:-12, width:24, height:24, fill:'#fff', stroke:'#c62828', 'stroke-width':3, transform:`translate(${hx},${hy}) rotate(45)` }, b);
+      txt(b, hx, hy + 7, '!', { 'text-anchor':'middle', 'font-size':18, 'font-weight':900, fill:'#c62828' });
+    }
+    const lh = 21, h = s.shelf.length*lh + 8;                                                       // large white label
+    el('rect', { x:8, y:sy+80, width:174, height:h, rx:4, fill:'#fff', stroke:'#111', 'stroke-width':1.5 }, b);
+    s.shelf.forEach((line, k) => txt(b, 95, sy + 80 + 4 + lh*(k+1) - 5, line, LBL18));
+    o.disp = o.vol; o.apply(o.vol);
+    S.bottles.push(o); S.objs[o.id] = o;
+  });
+}
+
+/* Distilled water tap + sink (all tabs) */
+const SPOUT_DX = 83;
+function drawTap(){
+  const g = el('g', { transform:`translate(${S.tapX},0)` }, L.bg); S.tapG = g;
+  el('rect', { x:136, y:0, width:30, height:8, fill:'#607d8b' }, g);
+  el('rect', { x:142, y:0, width:18, height:62, fill:'#9aa7b2', stroke:'#4f5b66', 'stroke-width':2 }, g);
+  el('path', { d:'M160 44 L86 44 Q76 44 76 54 L76 72 L90 72 L90 58 L160 58 Z', fill:'#9aa7b2', stroke:'#4f5b66', 'stroke-width':2 }, g);
+  el('rect', { x:128, y:14, width:46, height:10, rx:5, fill:'#1e88e5', stroke:'#0d47a1', 'stroke-width':2 }, g);
+  el('circle', { cx:151, cy:19, r:8, fill:'#1565c0' }, g);
+  el('rect', { x:-4, y:160, width:183, height:12, rx:4, fill:'#b0bec5', stroke:'#546e7a', 'stroke-width':2 }, g);
+  el('path', { d:'M0 172 L175 172 L160 268 L15 268 Z', fill:'#cfd8dc', stroke:'#546e7a', 'stroke-width':3 }, g);
+  el('ellipse', { cx:87, cy:262, rx:14, ry:4, fill:'#455a64' }, g);
+  el('rect', { x:2, y:278, width:171, height:28, rx:5, fill:'#fff', stroke:'#0d47a1', 'stroke-width':1.5 }, g);
+  txt(g, 87, 298, 'Distilled water tap', { 'text-anchor':'middle', 'font-size':16, 'font-weight':800, fill:'#0d2a4a' });
+  txt(g, 87, 205, 'Sink', { 'text-anchor':'middle', 'font-size':16, 'font-weight':700, fill:'#37474f' });
+}
+function sinkZone(){ return { x:S.tapX - 10, y:60, w:195, h:250 }; }
+
+/* ---------- common apparatus ---------- */
+function makeDropper(x, y){
+  const o = newObj('dropper', 'dropper', x, y, L.top, { vol:0, cap:V.dropperCap, sub:null, lastSub:null });
+  const b = o.body;
+  el('rect', { x:-14, y:-6, width:58, height:206, fill:'transparent' }, b);
+  o.liq = el('rect', { x:11, y:148, width:8, height:0, fill:'#cfe8f8' }, b);
+  o.tipLiq = el('path', { d:'M11 148 L19 148 L16.5 165 L13.5 165 Z', fill:'#cfe8f8', opacity:0 }, b);
+  el('path', { d:'M9 50 L21 50 L21 148 L17 168 L13 168 L9 148 Z', fill:'rgba(225,240,250,.3)', stroke:'#37474f', 'stroke-width':2 }, b);
+  el('rect', { x:5, y:0, width:20, height:46, rx:10, fill:'#b33a3a', stroke:'#6e1f1f', 'stroke-width':2 }, b);
+  el('rect', { x:3, y:42, width:24, height:9, rx:2, fill:'#7a2525' }, b);
+  txt(b, 15, 192, 'Dropper', LBL16);
+  o.apply = v => { const h = v / o.cap * 90; o.liq.setAttribute('y', 148 - h); o.liq.setAttribute('height', h); o.tipLiq.setAttribute('opacity', v > 0.01 ? 1 : 0); };
+  return finishObj(o);
+}
+function setDropperColour(o, c){ o.liq.setAttribute('fill', c); o.tipLiq.setAttribute('fill', c); }
+function dropperTip(o){ return { x:o.x + 15, y:o.y + 168 }; }
+
+function makeTile(x, y, w, h){
+  const o = newObj('tile', 'tile', x, y, L.low, { w, h });
+  const b = o.body;
+  el('rect', { x:5, y:5, width:w, height:h, rx:6, fill:'rgba(0,0,0,.18)' }, b);
+  el('rect', { x:0, y:0, width:w, height:h, rx:6, fill:'#ffffff', stroke:'#94a3b8', 'stroke-width':2 }, b);
+  o.hl = el('rect', { x:-6, y:-6, width:w+12, height:h+12, rx:10, fill:'none', stroke:'#16a34a', 'stroke-width':5, opacity:0, class:'tilehl' }, b);
+  txt(b, 10, 24, 'White tile', { 'font-size':16, 'font-weight':700, fill:'#475569' });
+  return finishObj(o);
+}
+function tileRect(){ const t = S.objs.tile; return { x:t.x, y:t.y, w:t.w, h:t.h }; }
+
+function drawBeakerShape(b, cid, colour){
+  const cp = el('clipPath', { id:cid }, defs); el('rect', { x:7, y:4, width:76, height:95 }, cp);
+  const liq = el('rect', { x:0, y:99, width:90, height:0, fill:colour, 'clip-path':`url(#${cid})` }, b);
+  el('path', { d:'M0 0 L6 4 L6 96 Q6 100 10 100 L80 100 Q84 100 84 96 L84 4 L90 0', fill:'rgba(230,242,250,.3)', stroke:'#37474f', 'stroke-width':2.5 }, b);
+  for (let k = 1; k <= 4; k++) el('line', { x1:64, x2:78, y1:100 - k*18, y2:100 - k*18, stroke:'#37474f', 'stroke-width':1.5 }, b);
+  return liq;
+}
+function makeWaste(x, y){
+  const o = newObj('waste', 'waste', x, y, L.low, { vol:0, cap:40 });
+  const b = o.body;
+  el('rect', { x:-6, y:-6, width:102, height:166, fill:'transparent' }, b);
+  o.liq = drawBeakerShape(b, 'wclip', '#cbbf9b');
+  el('rect', { x:-4, y:106, width:98, height:50, rx:4, fill:'#fff', stroke:'#111', 'stroke-width':1.5 }, b);
+  txt(b, 45, 127, 'Waste', LBL18); txt(b, 45, 149, 'beaker', LBL18);
+  o.apply = v => { const h = Math.min(v, o.cap) / o.cap * 86; o.liq.setAttribute('y', 99 - h); o.liq.setAttribute('height', h); };
+  return finishObj(o);
+}
+function wasteZone(){ const w = S.objs.waste; return w ? { x:w.x - 12, y:w.y - 150, w:114, h:260 } : null; }
+
+/* drop animation: scale + fall + fade, then callback */
+function spawnDrop(x0, y0, x1, y1, colour, onLand){
+  const c = el('circle', { cx:x0, cy:y0, r:4, fill:colour, stroke:'#1e3a5f', 'stroke-width':1 }, L.fx);
+  tween('drop' + (dropN++), 0, 1, 360, p => {
+    c.setAttribute('cy', y0 + (y1 - y0)*p);
+    c.setAttribute('r', 4*(0.6 + 0.8*p));
+    c.setAttribute('opacity', p > .75 ? 1 - (p - .75)/.25 : 1);
+  }, () => { c.remove(); if (onLand) onLand(); });
+}
+
+/* flash feedback on an object (green ok / red error + shake) */
+function flash(o, ok){
+  if (!o || !o.body) return;
+  let bb; try { bb = o.body.getBBox(); } catch (e) { return; }
+  const r = el('rect', { x:o.x + bb.x - 6, y:o.y + bb.y - 6, width:bb.width + 12, height:bb.height + 12, rx:10, class:'flash ' + (ok ? 'ok' : 'err') }, L.fx);
+  setTimeout(() => r.remove(), 950);
+  if (!ok){ o.body.classList.remove('errshake'); void o.body.getBBox(); o.body.classList.add('errshake'); setTimeout(() => o.body.classList.remove('errshake'), 500); }
+}
+
+/* water tap rinse animation */
+function waterRinse(o, tip, onDone){
+  const sx = S.tapX + SPOUT_DX;
+  const line = el('line', { x1:sx, y1:74, x2:sx, y2:262, class:'stream' }, L.fx);
+  const sp = el('ellipse', { cx:sx, cy:262, rx:26, ry:6, class:'splash' }, L.fx);
+  o.busy = true;
+  later(() => {
+    line.remove(); sp.remove();
+    const t = tip();
+    for (let k = 0; k < 3; k++) later(() => spawnDrop(t.x, t.y, t.x, 262, '#9fd6f6'), k*260);   // apparatus drips
+    later(() => { o.busy = false; onDone && onDone(); updateAll(); }, 700);
+  }, 1400);
+}
+
+/* =====================================================================
+   TAB BUILDERS
+   ===================================================================== */
+const D0 = 200;
+function buildUI(){
+  // Rack (static, behind tubes)
+  const rx = D0 + 52, ry = 330; S.rack = { x:rx, y:ry };
+  const MARK = 149 - V.tubeTarget / V.tubeCap * 136;
+  const rg = el('g', {}, L.low);
+  el('rect', { x:rx+4, y:ry+30, width:12, height:142, fill:'#7b4a22' }, rg);
+  el('rect', { x:rx+304, y:ry+30, width:12, height:142, fill:'#7b4a22' }, rg);
+  el('rect', { x:rx, y:ry+36, width:320, height:16, rx:3, fill:'#a0662f', stroke:'#5d3a18', 'stroke-width':1.5 }, rg);
+  el('line', { x1:rx-2, x2:rx+322, y1:ry+MARK, y2:ry+MARK, stroke:'#16324f', 'stroke-dasharray':'6 5', 'stroke-width':1.5 }, rg);
+  txt(rg, rx-6, ry+MARK+6, '2 cm³', { 'text-anchor':'end', 'font-size':16, 'font-weight':800, fill:'#13202c', class:'halo' });
+  el('rect', { x:rx, y:ry+138, width:320, height:34, rx:4, fill:'#8b5627', stroke:'#5d3a18', 'stroke-width':1.5 }, rg);
+  for (let i = 0; i < 5; i++) txt(rg, slotX(i) + 17, ry + 163, CONFIG.tubeLetters[i], { 'text-anchor':'middle', 'font-size':18, 'font-weight':900, fill:'#fff' });
+  txt(rg, rx + 160, ry + 194, 'Test tube rack', LBL16);
+  makeDropper(D0 + 10, 40);
+  makeIndicator(D0 + 64, 44);
+  S.tubes = [0,1,2,3,4].map(i => makeTube(i));
+  makeTile(D0 + 10, 580, 190, 160);
+  makeWaste(Math.min(D0 + 240, S.W - 100), 596);
+}
+function slotX(i){ return S.rack.x + 20 + i*58; }
+function slotRect(i){ return { x:slotX(i) - 12, y:S.rack.y - 40, w:58, h:220 }; }
+
+function makeIndicator(x, y){
+  const o = newObj('ind', 'ind', x, y, L.top, { vol:30, cap:40, over:null });
+  const b = o.body;
+  el('rect', { x:-6, y:-8, width:116, height:146, fill:'transparent' }, b);
+  o.rot = el('g', { class:'indrot' }, b);
+  el('path', { d:'M45 26 Q52 -6 59 26 Z', fill:'#2b2b2b' }, o.rot);
+  el('rect', { x:36, y:24, width:32, height:16, rx:3, fill:'#37474f' }, o.rot);
+  const cp = el('clipPath', { id:'indclip' }, defs); el('rect', { x:4, y:42, width:96, height:86, rx:12 }, cp);
+  o.liq = el('rect', { x:0, y:60, width:104, height:60, fill:CONFIG.colours.indicatorLiquid, 'clip-path':'url(#indclip)' }, o.rot);
+  el('rect', { x:2, y:40, width:100, height:90, rx:14, fill:'rgba(230,242,250,.25)', stroke:'#37474f', 'stroke-width':2.5 }, o.rot);
+  el('rect', { x:5, y:58, width:94, height:54, rx:4, fill:'#fff', stroke:'#111', 'stroke-width':1.5 }, b);   // upright label
+  txt(b, 52, 81, 'Universal', LBL18); txt(b, 52, 103, 'indicator', LBL18);
+  o.apply = v => { const h = v / o.cap * 84; o.liq.setAttribute('y', 128 - h); o.liq.setAttribute('height', h); };
+  return finishObj(o);
+}
+
+function makeTube(i){
+  const s = CONFIG.substances[i], letter = CONFIG.tubeLetters[i];
+  const o = newObj('tube'+i, 'tube', slotX(i), S.rack.y, L.mid, { i, letter, assigned:s.id, cur:null, vol:0, cap:V.tubeCap, ind:0, mixed:false, over:false, dirty:false, observed:false, recorded:false, onTile:false, slot:i });
+  const b = o.body;
+  o.bg = el('rect', { x:-10, y:-10, width:54, height:172, rx:8, fill:'#fff', class:'tubebg', opacity:0 }, b);
+  el('rect', { x:-12, y:-12, width:58, height:178, fill:'transparent' }, b);
+  o.rot = el('g', { class:'tuberot' }, b);
+  const cid = 'tclip'+i, shape = 'M4 0 L4 136 A13 13 0 0 0 30 136 L30 0 Z';
+  const cp = el('clipPath', { id:cid }, defs); el('path', { d:shape }, cp);
+  el('path', { d:shape, fill:'rgba(235,246,253,.55)' }, o.rot);
+  o.liq = el('rect', { x:0, y:149, width:34, height:0, class:'liq', 'clip-path':`url(#${cid})`, style:'fill:#cfe8f8' }, o.rot);
+  o.band = el('rect', { x:0, y:149, width:34, height:0, class:'band', opacity:0, 'clip-path':`url(#${cid})` }, o.rot);
+  const MARK = 149 - V.tubeTarget / V.tubeCap * 136;
+  el('line', { x1:4, x2:30, y1:MARK, y2:MARK, stroke:'#16324f', 'stroke-width':2 }, o.rot);
+  el('path', { d:'M2 0 L2 136 A15 15 0 0 0 32 136 L32 0', fill:'none', stroke:'#37474f', 'stroke-width':2.5 }, o.rot);
+  el('rect', { x:-1, y:-3, width:36, height:5, rx:2, fill:'#dfe9f0', stroke:'#37474f', 'stroke-width':1.5 }, o.rot);
+  el('rect', { x:5, y:9, width:24, height:24, rx:3, fill:'#fff', stroke:'#222', 'stroke-width':1.5 }, o.rot);
+  txt(o.rot, 17, 28, letter, { 'text-anchor':'middle', 'font-size':18, 'font-weight':900, fill:'#000' });
+  o.apply = v => {
+    const h = v / o.cap * 136;
+    o.liq.setAttribute('y', 149 - h); o.liq.setAttribute('height', h);
+    o.band.setAttribute('y', 149 - h); o.band.setAttribute('height', Math.min(16, h));
+  };
+  return finishObj(o);
+}
+function tubeCenter(t){ return { x:t.x + 17, y:t.y + 75 }; }
+function tubeZone(t){ return { x:t.x - 22, y:t.y - 160, w:78, h:220 }; }
+function tubeFinalColour(t){
+  let c = CONFIG.colourAt('ui', subById(t.cur).pH);
+  if (t.ind > V.indicatorDrops) c = mixHex(c, '#000000', Math.min(0.45, 0.15*(t.ind - V.indicatorDrops)));
+  return c;
+}
+function tubeColour(t){
+  if (!t.cur){ t.liq.style.fill = '#cfe8f8'; t.band.setAttribute('opacity', 0); return; }
+  const base = subById(t.cur).liquid;
+  if (t.ind > 0 && !t.mixed){
+    const fin = tubeFinalColour(t);
+    t.liq.style.fill = mixHex(base, fin, 0.18);
+    t.band.style.fill = fin; t.band.setAttribute('opacity', 0.95);   // local colour at the top
+  } else if (t.mixed){
+    t.liq.style.fill = tubeFinalColour(t);                            // full colour (1 s CSS transition)
+    t.band.setAttribute('opacity', 0);
+  } else { t.liq.style.fill = base; t.band.setAttribute('opacity', 0); }
+}
+
+function buildPaper(){
+  makeDropper(D0 + 10, 40);
+  makeForceps(D0 + 62, 52);
+  makeBox(D0 + 104, 92);
+  makePlate(D0 + 10, 340);
+  makeTile(D0 + 10, 540, 296, 150);
+  makeWaste(Math.min(D0 + 322, S.W - 98), 560);
+}
+function makeForceps(x, y){
+  const o = newObj('forceps', 'forceps', x, y, L.top, { holding:false });
+  const b = o.body;
+  el('rect', { x:-14, y:-28, width:58, height:196, fill:'transparent' }, b);
+  el('path', { d:'M11 6 L5 128 L13 140', fill:'none', stroke:'#546e7a', 'stroke-width':5, 'stroke-linecap':'round', 'stroke-linejoin':'round' }, b);
+  el('path', { d:'M19 6 L25 128 L17 140', fill:'none', stroke:'#546e7a', 'stroke-width':5, 'stroke-linecap':'round', 'stroke-linejoin':'round' }, b);
+  el('rect', { x:6, y:0, width:18, height:16, rx:5, fill:'#78909c', stroke:'#37474f', 'stroke-width':2 }, b);
+  o.paper = el('rect', { x:4, y:136, width:22, height:22, rx:2, fill:CONFIG.colours.paperUnused, stroke:'#9a6b12', 'stroke-width':1.5, opacity:0 }, b);
+  txt(b, 15, -8, 'Forceps', LBL16);
+  return finishObj(o);
+}
+function forcepsTip(o){ return { x:o.x + 15, y:o.y + 142 }; }
+function makeBox(x, y){
+  const o = newObj('box', 'box', x, y, L.mid, {});
+  const b = o.body;
+  for (let k = 0; k < 5; k++) el('rect', { x:12 + k*18, y:0, width:12, height:34, rx:1, fill:CONFIG.colours.paperUnused, stroke:'#9a6b12', 'stroke-width':1.5, class:'strip', 'data-hand':'1' }, b);
+  el('rect', { x:0, y:24, width:110, height:64, rx:6, fill:'#1d4f91', stroke:'#0f2d57', 'stroke-width':2 }, b);
+  txt(b, 55, 54, 'pH paper', { 'text-anchor':'middle', 'font-size':18, 'font-weight':800, fill:'#fff' });
+  txt(b, 55, 77, 'pH 0–14', { 'text-anchor':'middle', 'font-size':16, 'font-weight':600, fill:'#fff' });
+  return finishObj(o);
+}
+function boxZone(){ const b = S.objs.box; return { x:b.x - 12, y:b.y - 90, w:134, h:190 }; }
+function makePlate(x, y){
+  const o = newObj('plate', 'plate', x, y, L.mid, { w:300, h:96, onTile:false, checked:false, wells:[] });
+  const b = o.body;
+  el('rect', { x:0, y:0, width:300, height:96, rx:14, fill:'#f4f4f1', stroke:'#7b8794', 'stroke-width':2.5 }, b);
+  for (let i = 0; i < 5; i++){
+    const cx = 34 + 58*i, cy = 58;
+    const w = { id:'well'+i, i, vol:0, disp:0, cap:V.wellCap, paper:false, wet:false, recorded:false };
+    w.num = txt(b, cx, 26, String(i + 1), { 'text-anchor':'middle', 'font-size':18, 'font-weight':900, fill:'#000', class:'wellnum' });
+    el('circle', { cx, cy, r:24, fill:'#e3e7eb', stroke:'#8d99a6', 'stroke-width':2 }, b);
+    const cp = el('clipPath', { id:'wclip'+i }, defs); el('circle', { cx, cy, r:22 }, cp);
+    w.liq = el('rect', { x:cx - 24, y:cy + 24, width:48, height:0, fill:'#9fd0f0', opacity:.75, 'clip-path':`url(#wclip${i})` }, b);
+    w.paperEl = el('rect', { x:cx - 12, y:cy - 12, width:24, height:24, rx:2, class:'paperfill', style:`fill:${CONFIG.colours.paperUnused}`, stroke:'#9a6b12', 'stroke-width':1.5, opacity:0 }, b);
+    w.apply = v => { const h = v / w.cap * 48; w.liq.setAttribute('y', cy + 24 - h); w.liq.setAttribute('height', h); };
+    o.wells.push(w);
+  }
+  txt(b, 150, 118, 'Spot plate', LBL16);
+  return finishObj(o);
+}
+function wellCenter(i){ const p = S.objs.plate; return { x:p.x + 34 + 58*i, y:p.y + 58 }; }
+function wellZone(i){ const c = wellCenter(i); return { x:c.x - 29, y:c.y - 170, w:58, h:200 }; }
+
+function buildMeter(){
+  // shelf not needed in this tab
+  el('rect', { x:0, y:36, width:190, height:S.H - 36, fill:'rgba(40,25,20,.6)' }, L.top);
+  el('rect', { x:30, y:356, width:130, height:40, rx:8, fill:'#fff' }, L.top);
+  txt(L.top, 95, 383, 'Not needed', { 'text-anchor':'middle', 'font-size':18, 'font-weight':800, fill:'#000' });
+  const m = newObj('meter', 'meter', D0 + 10, 24, L.low, { drag:false });
+  const b = m.body;
+  el('rect', { x:0, y:0, width:170, height:134, rx:12, fill:'#37474f', stroke:'#1c262b', 'stroke-width':2 }, b);
+  el('rect', { x:14, y:14, width:142, height:54, rx:6, fill:'#cfe8cf', stroke:'#1c262b', 'stroke-width':2 }, b);
+  m.reading = txt(b, 85, 53, '--.--', { 'text-anchor':'middle', 'font-size':30, 'font-weight':800, fill:'#10230f', 'font-family':'Menlo,Consolas,monospace' });
+  m.status = txt(b, 85, 94, 'Probe out', { 'text-anchor':'middle', 'font-size':16, 'font-weight':700, fill:'#fff' });
+  txt(b, 85, 124, 'pH meter', { 'text-anchor':'middle', 'font-size':16, 'font-weight':800, fill:'#ffd54f' });
+  el('circle', { cx:170, cy:96, r:6, fill:'#111' }, b);
+  finishObj(m);
+  S.wire = el('path', { fill:'none', stroke:'#1f1f1f', 'stroke-width':4, 'stroke-linecap':'round' }, L.wire);
+  const p = newObj('probe', 'probe', D0 + 196, 64, L.top, { dipped:null, everRinsed:false, everDipped:false, lastSub:null, contam:false });
+  const pb = p.body;
+  el('rect', { x:-16, y:-8, width:56, height:166, fill:'transparent' }, pb);
+  el('rect', { x:4, y:0, width:16, height:44, rx:4, fill:'#263238' }, pb);
+  el('rect', { x:8, y:44, width:8, height:92, fill:'rgba(210,230,240,.9)', stroke:'#37474f', 'stroke-width':1.5 }, pb);
+  el('circle', { cx:12, cy:140, r:8, fill:'rgba(200,225,240,.95)', stroke:'#37474f', 'stroke-width':1.5 }, pb);
+  txt(pb, 26, 26, 'pH probe', { 'font-size':16, 'font-weight':700, fill:'#13202c', class:'halo' });
+  finishObj(p);
+  const pos = [[D0+15,330],[D0+145,330],[D0+275,330],[D0+80,540],[D0+210,540]];
+  CONFIG.substances.forEach((s, i) => {
+    const o = newObj('bk'+i, 'beaker', pos[i][0], pos[i][1], L.low, { drag:false, i, sub:s, vol:V.beakerStart, cap:V.beakerCap, recorded:false });
+    const bb = o.body;
+    o.liq = drawBeakerShape(bb, 'bkclip'+i, s.liquid);
+    el('rect', { x:-19, y:106, width:128, height:52, rx:4, fill:'#fff', stroke:'#111', 'stroke-width':1.5 }, bb);
+    s.beaker.forEach((line, k) => txt(bb, 45, 127 + k*22, line, LBL18));
+    o.apply = v => { const h = v / o.cap * 86; o.liq.setAttribute('y', 99 - h); o.liq.setAttribute('height', h); };
+    finishObj(o);
+  });
+}
+function probeTip(o){ return { x:o.x + 12, y:o.y + 148 }; }
+function beakerZone(bk){ return { x:bk.x - 16, y:bk.y - 160, w:122, h:262 }; }
+function updateWire(){
+  const m = S.objs.meter, p = S.objs.probe; if (!m || !p || !S.wire) return;
+  const jx = m.x + 170, jy = m.y + 96, px = p.x + 12, py = p.y + 2;
+  S.wire.setAttribute('d', `M${jx} ${jy} C ${jx + 50} ${jy + 90}, ${px} ${py - 90}, ${px} ${py}`);
+}
+
+/* Shake button for the selected test tube */
+function updateShakeBtn(){
+  if (!S.shakeBtn) return;
+  const t = S.sel;
+  if (!t || t.type !== 'tube'){ S.shakeBtn.setAttribute('display', 'none'); return; }
+  let bx = t.x - 21, by = t.y + 166;
+  if (t.slot != null) by = S.rack.y + 204;
+  if (by + 40 > S.H){ bx = t.x - 82; by = t.y + 60; }
+  S.shakeBtn.setAttribute('display', 'inline');
+  S.shakeBtn.setAttribute('transform', `translate(${bx},${by})`);
+  S.shakeBtn.setAttribute('data-tube', t.id);
+}
+function makeShakeBtn(){
+  const g = el('g', { 'data-act':'shake', display:'none', style:'cursor:pointer' }, L.top);
+  el('rect', { x:0, y:0, width:76, height:38, rx:19, fill:'#1f4e79', stroke:'#0b2540', 'stroke-width':2 }, g);
+  txt(g, 38, 25, 'Shake', { 'text-anchor':'middle', 'font-size':16, 'font-weight':800, fill:'#fff' });
+  S.shakeBtn = g;
+}
+
+/* =====================================================================
+   FEEDBACK + STATS
+   ===================================================================== */
+function showMsg(kind, text){
+  const m = $('#msg'); m.className = kind; m.textContent = text;
+  const li = document.createElement('li'); li.className = kind; li.textContent = text;
+  const log = $('#log'); log.prepend(li); while (log.children.length > 6) log.lastChild.remove();
+}
+function ok(o, text){ S.stats.ok++; showMsg('ok', text); flash(o, true); }
+function err(o, text){ S.stats.err++; showMsg('err', text); flash(o, false); }
+function warn(text){ showMsg('warn', text); }
+function info(text){ showMsg('info', text); }
+function accuracy(){ const n = S.stats.ok + S.stats.err; return n ? Math.round(S.stats.ok / n * 100) : 100; }
+function updateStats(){
+  const n = S.stats.ok + S.stats.err;
+  $('#stats').textContent = `Step accuracy: ${S.stats.ok} / ${n} correct (${accuracy()}%) · Errors: ${S.stats.err}`;
+}
+
+/* =====================================================================
+   INTERACTION LOGIC — dropper
+   ===================================================================== */
+function dropDropper(o){
+  const p = dropperTip(o);
+  if (inRect(p, sinkZone())) return rinseDropper(o);
+  const b = S.bottles.find(b => inRect(p, { x:0, y:b.slotY - 8, w:190, h:136 }));
+  if (b && S.tab !== 'meter') return fillDropper(o, b);
+  if (S.tab === 'ui'){
+    const t = nearestIn(S.tubes, t => tubeZone(t), p, t => tubeCenter(t).x);
+    if (t) return dropperToTube(o, t);
+  }
+  if (S.tab === 'paper'){
+    for (let i = 0; i < 5; i++) if (inRect(p, wellZone(i))) return dropperToWell(o, i);
+  }
+  const wz = wasteZone(); if (wz && inRect(p, wz)) return emptyDropper(o);
+}
+function nearestIn(list, zoneFn, p, cxFn){
+  let best = null, bd = 1e9;
+  list.forEach(it => { if (inRect(p, zoneFn(it))){ const d = Math.abs(cxFn(it) - p.x); if (d < bd){ bd = d; best = it; } } });
+  return best;
+}
+function fillDropper(o, b){
+  const s = b.sub;
+  if (o.lastSub && o.lastSub !== s.id){ err(o, fmt(CONFIG.msg.contamDropper, { old:subById(o.lastSub).name, new:s.name })); return; }
+  if (o.vol >= o.cap - 0.001){ warn('The dropper is already full (2 cm³).'); return; }
+  const amount = o.cap - o.vol;
+  setDropperColour(o, s.liquid);
+  o.sub = s.id; o.lastSub = s.id;
+  setVol(o, o.cap); setVol(b, b.vol - amount);
+  ok(o, `Dropper filled with 2 cm³ of ${s.name}.`);
+  if (b.vol - amount < V.bottleRefillBelow) later(() => { setVol(b, V.bottleStart, 600); info(`The ${s.name} bottle was running low, so it has been refilled.`); }, 700);
+}
+function emptyDropper(o){
+  if (o.vol <= 0.001){ warn('The dropper is already empty.'); return; }
+  const w = S.objs.waste, amt = o.vol;
+  o.busy = true;
+  spawnDrop(dropperTip(o).x, dropperTip(o).y, dropperTip(o).x, w.y + 80, o.liq.getAttribute('fill'), () => { o.busy = false; });
+  setVol(o, 0); setVol(w, w.vol + amt);
+  ok(w, 'Dropper emptied into the waste beaker. Now rinse it at the distilled water tap.');
+}
+function rinseDropper(o){
+  moveObj(o, S.tapX + SPOUT_DX - 15, 92);
+  setVol(o, 0, 1200);
+  waterRinse(o, () => dropperTip(o), () => {});
+  o.sub = null; o.lastSub = null;
+  ok(o, 'Dropper rinsed with distilled water. It is clean and ready for the next substance.');
+}
+
+/* ---------- Universal indicator tab ---------- */
+function dropperToTube(o, t){
+  if (o.vol <= 0.001){ warn('Fill the dropper with a substance from the shelf first.'); return; }
+  if (t.dirty){ warn(`Rinse test tube ${t.letter} at the distilled water tap before adding a new liquid.`); return; }
+  if (o.sub !== t.assigned){ err(t, fmt(CONFIG.msg.wrongTube, { tube:t.letter, sub:subById(t.assigned).name })); return; }
+  if (t.over){ warn(`Tube ${t.letter} already has too much liquid. Pour it into the waste beaker and rinse it first.`); return; }
+  moveObj(o, t.x + 2, t.y - 176);
+  o.busy = true;
+  const n = V.dropsPerFill, amt = o.vol / n, colour = o.liq.getAttribute('fill');
+  for (let k = 0; k < n; k++){
+    later(() => {
+      const tip = dropperTip(o);
+      setVol(o, o.vol - amt);
+      spawnDrop(tip.x, tip.y, tip.x, t.y + 149 - t.vol / t.cap * 136, colour, () => {
+        t.cur = o.sub; setVol(t, t.vol + amt); tubeColour(t);
+        if (k === n - 1){ o.busy = false; afterFill(t); }
+      });
+    }, 300 + k*260);
+  }
+}
+function afterFill(t){
+  if (t.vol > V.tubeMax + 1e-6){ t.over = true; err(t, fmt(CONFIG.msg.tooMuch, { tube:t.letter, vol:t.vol.toFixed(1) })); }
+  else if (t.vol >= V.tubeMin - 1e-6) ok(t, `Good! Tube ${t.letter} now has 2 cm³ of ${subById(t.cur).name}. Rinse the dropper at the tap before the next substance.`);
+  else warn(`Tube ${t.letter} has only ${t.vol.toFixed(1)} cm³. Fill to the 2 cm³ mark.`);
+  updateAll();
+}
+function dropInd(o){
+  const p = { x:o.x + 52, y:o.y + 130 };
+  const t = nearestIn(S.tubes, t => tubeZone(t), p, t => tubeCenter(t).x);
+  if (!t) return;
+  if (!t.cur || t.vol < V.tubeMin - 1e-6){ warn(`Add 2 cm³ of the substance to tube ${t.letter} first, then add the indicator.`); return; }
+  if (t.over){ warn(`Tube ${t.letter} has too much liquid. Pour it into the waste beaker and rinse it first.`); return; }
+  moveObj(o, t.x + 17 - 52, t.y - 136);
+  o.rot.style.transform = 'rotate(180deg)';
+  o.over = t.id;
+  later(() => addIndDrop(o, t), 420);
+}
+function addIndDrop(o, t){
+  if (o.busy) return;
+  o.busy = true;
+  const x = o.x + 52, y = o.y + 132;
+  spawnDrop(x, y, x, t.y + 149 - t.vol / t.cap * 136, CONFIG.colours.indicatorLiquid, () => {
+    o.busy = false;
+    t.ind++; setVol(t, t.vol + V.indicatorDropVol); setVol(o, o.vol - V.indicatorDropVol);
+    tubeColour(t);
+    if (t.ind > V.indicatorDrops) err(t, fmt(CONFIG.msg.tooManyDrops, { n:t.ind }));
+    else ok(t, `Drop ${t.ind} of 3 added to tube ${t.letter}.` + (t.ind === 3 ? ' Now shake the tube gently.' : ' Tap the bottle to add another drop.'));
+    updateAll();
+  });
+}
+function shakeTube(t){
+  if (!t.cur || t.vol < V.tubeMin - 1e-6){ warn(`Add 2 cm³ of the substance to tube ${t.letter} first.`); return; }
+  if (t.over){ warn(`Tube ${t.letter} has too much liquid. Empty it into the waste beaker and rinse it.`); return; }
+  if (t.ind < V.indicatorDrops){ warn('Add 3 drops of universal indicator before shaking.'); return; }
+  t.rot.classList.remove('shaking'); void t.rot.getBBox(); t.rot.classList.add('shaking');
+  setTimeout(() => t.rot.classList.remove('shaking'), 850);
+  if (!t.mixed){
+    t.mixed = true;
+    later(() => tubeColour(t), 250);
+    if (t.onTile){ t.observed = true; ok(t, `Mixed! Compare the colour of tube ${t.letter} with the colour chart, then record the pH.`); }
+    else ok(t, `Mixed! Now move tube ${t.letter} onto the white tile to observe the colour.`);
+  } else info(`Tube ${t.letter} is already mixed.`);
+  updateAll();
+}
+function dropTube(t){
+  const c = tubeCenter(t);
+  t.onTile = false; t.slot = null;
+  if (inRect(c, tileRect())){
+    const other = S.tubes.find(x => x !== t && x.onTile);
+    if (other){ warn(`Only one test tube fits on the white tile. Move tube ${other.letter} off first.`); updateTile(); return; }
+    const tl = S.objs.tile;
+    t.onTile = true; moveObj(t, tl.x + tl.w - 62, tl.y + 5);
+    flash(tl, true);
+    if (t.mixed && t.ind >= V.indicatorDrops && !t.over){ t.observed = true; ok(t, `Tube ${t.letter} is on the white tile. Compare its colour with the chart and record the pH.`); }
+    else if (!t.cur) info(`Tube ${t.letter} is empty.`);
+    else warn(`Finish the earlier steps for tube ${t.letter} (2 cm³, 3 drops of indicator, shake) before observing.`);
+    updateTile(); return;
+  }
+  for (let i = 0; i < 5; i++){
+    if (inRect(c, slotRect(i)) && !S.tubes.some(x => x !== t && x.slot === i)){ t.slot = i; moveObj(t, slotX(i), S.rack.y); updateTile(); return; }
+  }
+  if (inRect(c, sinkZone())) return rinseTube(t);
+  const wz = wasteZone(); if (wz && inRect({ x:c.x, y:t.y }, wz)) return pourTube(t);
+  updateTile();
+}
+function pourTube(t){
+  if (t.vol <= 0.001){ warn(`Tube ${t.letter} is already empty.`); return; }
+  const w = S.objs.waste, amt = t.vol;
+  t.busy = true;
+  t.rot.style.transform = 'rotate(15deg)';                 // gentle tilt (max ±15°)
+  setVol(t, 0, 700); setVol(w, w.vol + amt, 700);
+  later(() => { t.rot.style.transform = ''; t.busy = false; }, 800);
+  Object.assign(t, { cur:null, ind:0, mixed:false, over:false, observed:false, dirty:true });
+  tubeColour(t);
+  ok(w, `Tube ${t.letter} emptied into the waste beaker. Rinse the test tube at the distilled water tap before refilling.`);
+}
+function rinseTube(t){
+  if (t.vol > 0.001){ warn(`Pour the liquid in tube ${t.letter} into the waste beaker first.`); return; }
+  if (!t.dirty){ info(`Tube ${t.letter} is already clean.`); return; }
+  moveObj(t, S.tapX + SPOUT_DX - 17, 112);
+  t.dirty = false;
+  waterRinse(t, () => ({ x:t.x + 17, y:t.y + 150 }), () => {});
+  ok(t, `Tube ${t.letter} rinsed. Put it back in the rack and add 2 cm³ of ${subById(t.assigned).name}.`);
+}
+function updateTile(){
+  const tl = S.objs.tile; if (!tl) return;
+  const any = (S.tubes || []).some(t => t.onTile) || (S.objs.plate && S.objs.plate.onTile);
+  tl.hl.setAttribute('opacity', any ? 1 : 0);
+  (S.tubes || []).forEach(t => t.bg.setAttribute('opacity', t.onTile ? 1 : 0));
+}
+function dropTile(tl){
+  (S.tubes || []).forEach(t => { if (inRect(tubeCenter(t), tileRect()) && !S.tubes.some(x => x !== t && x.onTile)){ t.onTile = true; if (t.mixed && t.ind >= 3) t.observed = true; } });
+  const p = S.objs.plate;
+  if (p && inRect({ x:p.x + 150, y:p.y + 48 }, tileRect())) p.onTile = true;
+  updateTile();
+}
+
+/* ---------- pH paper tab ---------- */
+function dropForceps(o){
+  const p = forcepsTip(o);
+  if (inRect(p, boxZone())){
+    if (o.holding){ warn('The forceps are already holding a piece of pH paper.'); return; }
+    o.holding = true; o.paper.setAttribute('opacity', 1);
+    ok(o, 'You picked up a piece of pH paper with the forceps. Place it in a hole of the spot plate.');
+    return;
+  }
+  for (let i = 0; i < 5; i++){
+    if (inRect(p, wellZone(i))){
+      const pl = S.objs.plate, w = pl.wells[i];
+      if (!pl.checked){ warn('First check holes 1–5: drag the spot plate onto the white tile.'); return; }
+      if (!o.holding){ warn('Pick up a piece of pH paper from the pH paper box with the forceps first.'); return; }
+      if (w.paper){ warn(`Hole ${i + 1} already has pH paper.`); return; }
+      w.paper = true; w.paperEl.setAttribute('opacity', 1);
+      o.holding = false; o.paper.setAttribute('opacity', 0);
+      ok(pl, `pH paper placed in hole ${i + 1}.`);
+      return;
+    }
+  }
+  if (o.holding){
+    const b = S.bottles.find(b => inRect(p, { x:0, y:b.slotY - 8, w:190, h:136 }));
+    const wz = wasteZone();
+    if (b){ err(o, CONFIG.msg.dipPaper); return; }
+    if (wz && inRect(p, wz)){ err(o, CONFIG.msg.dipPaper); return; }
+  }
+}
+function dropPlate(pl){
+  pl.onTile = false;
+  if (inRect({ x:pl.x + 150, y:pl.y + 48 }, tileRect())){
+    const tl = S.objs.tile;
+    pl.onTile = true; moveObj(pl, tl.x + (tl.w - 300)/2, tl.y + (tl.h - 96)/2 - 4);
+    if (!pl.checked){
+      pl.checked = true;
+      pl.wells.forEach((w, k) => setTimeout(() => { w.num.classList.remove('glow'); void w.num.getBBox(); w.num.classList.add('glow'); }, k*150));
+      ok(pl, 'Spot plate on the white tile. Holes 1–5 checked. Now use the forceps to place pH paper in each hole.');
+    } else info('The spot plate is on the white tile.');
+  }
+  updateTile();
+}
+function dropperToWell(o, i){
+  const pl = S.objs.plate, w = pl.wells[i], s = CONFIG.substances[i];
+  if (o.vol <= 0.001){ warn('Fill the dropper with a substance from the shelf first.'); return; }
+  if (!w.paper){ warn(`Put a piece of pH paper in hole ${i + 1} first (use the forceps).`); return; }
+  if (w.wet){ warn(`Hole ${i + 1} has already been tested.`); return; }
+  if (o.sub !== s.id){ err(pl, fmt(CONFIG.msg.wrongHole, { hole:i + 1, sub:s.name })); return; }
+  const c = wellCenter(i);
+  moveObj(o, c.x - 15, c.y - 24 - 172);
+  o.busy = true;
+  const colour = o.liq.getAttribute('fill');
+  for (let k = 0; k < V.paperDrops; k++){
+    later(() => {
+      const tip = dropperTip(o);
+      setVol(o, o.vol - V.paperDropVol);
+      spawnDrop(tip.x, tip.y, tip.x, wellCenter(i).y, colour, () => {
+        setVol(w, w.vol + V.paperDropVol);
+        if (k === V.paperDrops - 1){
+          o.busy = false; w.wet = true;
+          w.paperEl.style.fill = CONFIG.colourAt('paper', s.pH);    // 1 s CSS colour transition
+          ok(pl, `2 drops added to hole ${i + 1}. Watch the pH paper change colour, then record the pH. Rinse the dropper before the next substance.`);
+          updateAll();
+        }
+      });
+    }, 300 + k*320);
+  }
+}
+
+/* ---------- pH meter tab ---------- */
+function dropProbe(o){
+  const p = probeTip(o);
+  if (inRect(p, sinkZone())) return rinseProbe(o);
+  for (let i = 0; i < 5; i++){ const bk = S.objs['bk'+i]; if (inRect(p, beakerZone(bk))) return dipProbe(o, bk); }
+}
+function rinseProbe(o){
+  moveObj(o, S.tapX + SPOUT_DX - 12, 112);
+  waterRinse(o, () => probeTip(o), () => {});
+  const first = !o.everRinsed;
+  o.everRinsed = true; o.lastSub = null; o.contam = false;
+  ok(o, first ? 'Probe rinsed with distilled water. Now dip it into a beaker.' : 'Probe rinsed. It is clean for the next substance.');
+}
+function dipProbe(o, bk){
+  if (!o.everRinsed){ warn('Rinse the probe under the distilled water tap first.'); return; }
+  const cont = !!(o.lastSub && o.lastSub !== bk.sub.id);
+  const oldSub = o.lastSub;
+  o.x = bk.x + 45 - 12; o.y = bk.y - 130; place(o);
+  o.busy = true;
+  moveObj(o, o.x, bk.y - 75, 600);                      // probe goes down into the liquid
+  later(() => { o.busy = false; }, 620);
+  o.dipped = bk.id;
+  setVol(bk, bk.vol + V.probeDisplace, 600);             // liquid level rises slightly
+  if (cont){ o.contam = true; err(o, fmt(CONFIG.msg.probeContam, { old:subById(oldSub).name, new:bk.sub.name })); }
+  else if (o.contam) warn('The probe is still contaminated, so the reading will be wrong. Rinse it at the tap.');
+  else { o.everDipped = true; ok(o, `Probe dipped into ${bk.sub.name}. Wait for the reading to stabilise.`); }
+  const prevPH = cont ? subById(oldSub).pH : (o.contamPH != null ? o.contamPH : null);
+  if (cont) o.contamPH = subById(oldSub).pH;
+  if (!o.contam) o.contamPH = null;
+  o.lastSub = bk.sub.id;
+  startReading(bk, o.contam ? (prevPH != null ? prevPH : bk.sub.pH) : null);
+}
+function startReading(bk, contamPH){
+  clearInterval(S.meterTimer);
+  const m = S.objs.meter, truePH = bk.sub.pH;
+  let target = truePH + (Math.random()*2 - 1) * CONFIG.meter.error;
+  if (contamPH != null) target = truePH + (contamPH - truePH) * CONFIG.meter.contaminationShift;
+  target = Math.round(target*100)/100;
+  S.meterRead = { bk:bk.id, target, stable:false, contam:contamPH != null };
+  const t0 = performance.now();
+  m.status.textContent = 'Stabilising…'; m.status.setAttribute('fill', '#ffd54f');
+  S.meterTimer = setInterval(() => {
+    const el_ = performance.now() - t0;
+    if (el_ < CONFIG.meter.stabiliseMs){
+      const amp = 1.6 * (1 - el_ / CONFIG.meter.stabiliseMs) + 0.04;
+      m.reading.textContent = Math.max(0, Math.min(14, target + (Math.random()*2 - 1)*amp)).toFixed(2);
+    } else {
+      clearInterval(S.meterTimer);
+      m.reading.textContent = target.toFixed(2);
+      m.status.textContent = 'Stable'; m.status.setAttribute('fill', '#8ef59f');
+      S.meterRead.stable = true;
+      updateAll();
+    }
+  }, 120);
+}
+function liftProbe(o){
+  const bk = S.objs[o.dipped];
+  if (bk) setVol(bk, bk.vol - V.probeDisplace, 400);
+  o.dipped = null; clearInterval(S.meterTimer); S.meterRead = null;
+  const m = S.objs.meter; m.reading.textContent = '--.--'; m.status.textContent = 'Probe out'; m.status.setAttribute('fill', '#fff');
+}
+
+/* hand touching pH paper */
+function handTouch(){
+  const b = S.objs.box;
+  err(b, CONFIG.msg.handPaper);
+  updateAll();
+}
+
+/* =====================================================================
+   EVENT HANDLING — Pointer Events drag & drop
+   ===================================================================== */
+let drag = null;
+function svgPt(e, svg){ const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
+function lockedWarn(){
+  showMsg('err', CONFIG.msg.gogglesFirst);
+  const g = $('#gogStatus'); g.classList.remove('pulse'); void g.offsetWidth; g.classList.add('pulse');
+}
+function onPointerDown(e){
+  const hand = e.target.closest('[data-hand]');
+  const act = e.target.closest('[data-act]');
+  const g = e.target.closest('[data-id]');
+  if (!hand && !act && !g) return;
+  e.preventDefault();
+  if (!S.goggles){ lockedWarn(); return; }
+  if (hand){ handTouch(); return; }
+  if (act){ const t = S.objs[act.getAttribute('data-tube')]; if (t) shakeTube(t); return; }
+  const o = S.objs[g.getAttribute('data-id')];
+  if (!o || !o.drag || o.busy) return;
+  lab.setPointerCapture(e.pointerId);
+  const p = svgPt(e, lab);
+  drag = { o, id:e.pointerId, dx:p.x - o.x, dy:p.y - o.y, sx:p.x, sy:p.y, moved:false, lastX:p.x, dir:0, changes:[], shook:false };
+  o.g.parentNode.appendChild(o.g);   // bring to front
+}
+function onPointerMove(e){
+  if (!drag || e.pointerId !== drag.id) return;
+  const o = drag.o, p = svgPt(e, lab);
+  if (!drag.moved && Math.hypot(p.x - drag.sx, p.y - drag.sy) > 6){ drag.moved = true; onDragStart(o); }
+  if (!drag.moved) return;
+  tweens.delete('mv' + o.id);
+  o.x = Math.max(-10, Math.min(S.W - 40, p.x - drag.dx));
+  o.y = Math.max(-10, Math.min(S.H - 60, p.y - drag.dy));
+  place(o);
+  if (o.type === 'tube' && !drag.shook){                 // back-and-forth drag = shake
+    const dx = p.x - drag.lastX;
+    if (Math.abs(dx) > 4){
+      const dir = Math.sign(dx), now = performance.now();
+      if (drag.dir && dir !== drag.dir){ drag.changes.push(now); drag.changes = drag.changes.filter(t => now - t < 900); if (drag.changes.length >= 3){ drag.shook = true; shakeTube(o); } }
+      drag.dir = dir; drag.lastX = p.x;
+    }
+  }
+}
+function onPointerUp(e){
+  if (!drag || e.pointerId !== drag.id) return;
+  const o = drag.o, moved = drag.moved; drag = null;
+  try { lab.releasePointerCapture(e.pointerId); } catch (x) {}
+  if (!moved) onTap(o); else onDrop(o);
+  updateAll();
+}
+function onDragStart(o){
+  if (o.type === 'ind' && o.over){ o.over = null; o.rot.style.transform = ''; }
+  if (o.type === 'probe' && o.dipped) liftProbe(o);
+  if (o.type === 'tube'){ if (o.onTile){ o.onTile = false; updateTile(); } o.slot = null; S.sel = o; updateShakeBtn(); }
+  if (o.type === 'plate' && o.onTile){ o.onTile = false; updateTile(); }
+  if (o.type === 'tile'){ (S.tubes || []).forEach(t => t.onTile = false); if (S.objs.plate) S.objs.plate.onTile = false; updateTile(); }
+}
+function onDrop(o){
+  switch (o.type){
+    case 'dropper': dropDropper(o); break;
+    case 'tube': dropTube(o); S.sel = o; updateShakeBtn(); break;
+    case 'ind': dropInd(o); break;
+    case 'tile': dropTile(o); break;
+    case 'plate': dropPlate(o); break;
+    case 'forceps': dropForceps(o); break;
+    case 'probe': dropProbe(o); break;
+  }
+}
+function onTap(o){
+  if (o.type === 'tube'){ S.sel = o; updateShakeBtn(); info(`Tube ${o.letter} selected. Drag it back and forth quickly, or press "Shake", to mix.`); }
+  else if (o.type === 'ind'){
+    const t = o.over && S.objs[o.over];
+    if (t) addIndDrop(o, t); else info('Drag the universal indicator bottle over a test tube to add a drop.');
+  }
+  else if (o.type === 'dropper') info('Drag the dropper onto a bottle to fill it, or over a container to add the liquid.');
+}
+
+/* Goggles + person (header) */
+function buildPerson(){
+  const svg = $('#personSvg'); svg.innerHTML = '';
+  S.halo = el('circle', { cx:205, cy:62, r:52, fill:'none', opacity:0 }, svg);
+  el('path', { d:'M160 118 Q160 76 205 74 Q250 76 250 118 Z', fill:'#ffffff', stroke:'#607d8b', 'stroke-width':2.5 }, svg);   // lab coat
+  el('path', { d:'M205 76 L195 118 M205 76 L215 118', stroke:'#607d8b', 'stroke-width':2 }, svg);
+  el('circle', { cx:205, cy:40, r:25, fill:'#f2c9a0', stroke:'#6d4c41', 'stroke-width':2 }, svg);                       // head
+  el('path', { d:'M181 34 Q186 12 205 13 Q226 12 229 34 Q216 22 205 24 Q192 22 181 34 Z', fill:'#3e2723' }, svg);
+  el('circle', { cx:196, cy:41, r:2.8, fill:'#222' }, svg); el('circle', { cx:214, cy:41, r:2.8, fill:'#222' }, svg);
+  el('path', { d:'M198 53 Q205 57 212 53', stroke:'#6d4c41', 'stroke-width':2, fill:'none' }, svg);
+  const g = el('g', { style:'cursor:grab' }, svg); S.gog = g; S.gogPos = { x:50, y:30 };
+  el('rect', { x:-8, y:-10, width:78, height:66, fill:'transparent' }, g);
+  el('path', { d:'M-4 10 Q31 -2 66 10', stroke:'#0d47a1', 'stroke-width':4, fill:'none' }, g);
+  el('rect', { x:0, y:2, width:28, height:20, rx:8, fill:'rgba(120,200,255,.55)', stroke:'#0d47a1', 'stroke-width':3 }, g);
+  el('rect', { x:34, y:2, width:28, height:20, rx:8, fill:'rgba(120,200,255,.55)', stroke:'#0d47a1', 'stroke-width':3 }, g);
+  el('path', { d:'M28 10 L34 10', stroke:'#0d47a1', 'stroke-width':3 }, g);
+  S.gogLabel = txt(g, 31, 46, 'Safety goggles', { 'text-anchor':'middle', 'font-size':16, 'font-weight':800, fill:'#0d2a4a' });
+  const setPos = () => g.setAttribute('transform', `translate(${S.gogPos.x},${S.gogPos.y})`); setPos();
+  let gd = null;
+  g.addEventListener('pointerdown', e => {
+    if (S.goggles) return;                       // cannot remove goggles once worn
+    e.preventDefault(); svg.setPointerCapture(e.pointerId);
+    const p = svgPt(e, svg); gd = { id:e.pointerId, dx:p.x - S.gogPos.x, dy:p.y - S.gogPos.y };
+  });
+  svg.addEventListener('pointermove', e => {
+    if (!gd || e.pointerId !== gd.id) return;
+    const p = svgPt(e, svg);
+    S.gogPos.x = Math.max(0, Math.min(206, p.x - gd.dx)); S.gogPos.y = Math.max(0, Math.min(92, p.y - gd.dy)); setPos();
+  });
+  const up = e => {
+    if (!gd || e.pointerId !== gd.id) return; gd = null;
+    const cx = S.gogPos.x + 31, cy = S.gogPos.y + 12;
+    if (Math.hypot(cx - 205, cy - 40) < 42){          // hit-test on the head
+      S.goggles = true; S.gogLabel.setAttribute('display', 'none'); g.style.cursor = 'default';
+      const sx = S.gogPos.x, sy = S.gogPos.y;
+      tween('gog', 0, 1, 300, p => { S.gogPos.x = sx + (174 - sx)*p; S.gogPos.y = sy + (29 - sy)*p; setPos(); });
+      S.halo.setAttribute('opacity', 1); S.halo.classList.add('halo-green');
+      const st = $('#gogStatus'); st.className = 'good'; st.textContent = 'Goggles on';
+      lab.classList.remove('locked');
+      showMsg('ok', CONFIG.msg.gogglesOn + ' ' + CONFIG.intro[S.tab]);
+      updateAll();
+    }
+  };
+  svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+}
+
+/* =====================================================================
+   STEPS, RESULTS TABLE, COMPLETION, QUIZ
+   ===================================================================== */
+function progress(){
+  const g = S.goggles, n5 = f => ({ n:f, total:5, done:f >= 5 });
+  if (S.tab === 'ui'){
+    const T = S.tubes, c = f => T.filter(t => t.recorded || f(t)).length;
+    return [ { done:g },
+      n5(c(t => t.cur && t.vol >= V.tubeMin - 1e-6 && !t.over)),
+      n5(c(t => t.ind >= V.indicatorDrops)),
+      n5(c(t => t.mixed)),
+      n5(c(t => t.observed)),
+      n5(T.filter(t => t.recorded).length) ];
+  }
+  if (S.tab === 'paper'){
+    const pl = S.objs.plate, W = pl.wells, r = W.filter(w => w.recorded).length;
+    return [ { done:g }, { done:pl.checked },
+      n5(W.filter(w => w.paper).length), n5(W.filter(w => w.wet).length), n5(r), n5(r) ];
+  }
+  const p = S.objs.probe, r = [0,1,2,3,4].filter(i => S.objs['bk'+i].recorded).length;
+  return [ { done:g }, { done:p.everRinsed }, { done:p.everDipped }, n5(r), n5(r) ];
+}
+function renderSteps(){
+  const pr = progress(), ol = $('#steps');
+  if (ol.children.length !== pr.length){
+    ol.innerHTML = '';
+    CONFIG.steps[S.tab].forEach((s, i) => { const li = document.createElement('li'); li.innerHTML = `<span class="tick"></span><span class="stxt">${i}. ${s}</span><span class="count"></span>`; ol.appendChild(li); });
+  }
+  pr.forEach((st, i) => {
+    const li = ol.children[i];
+    li.querySelector('.tick').textContent = st.done ? '✓' : '';
+    li.querySelector('.count').textContent = st.total ? `${st.n}/${st.total}` : '';
+    if (st.done && !S.prevDone[i]){ li.classList.add('done', 'pop'); setTimeout(() => li.classList.remove('pop'), 700); }
+    if (!st.done) li.classList.remove('done');
+    S.prevDone[i] = st.done;
+  });
+}
+function buildTable(){
+  const tb = $('#recBody'); tb.innerHTML = '';
+  $('#col2h').textContent = S.tab === 'meter' ? 'Reading' : 'Colour';
+  CONFIG.substances.forEach((s, i) => {
+    const tr = document.createElement('tr'); tr.id = 'row' + i;
+    const prefix = S.tab === 'ui' ? `Tube ${CONFIG.tubeLetters[i]}: ` : S.tab === 'paper' ? `Hole ${i + 1}: ` : '';
+    const phCell = S.tab === 'meter'
+      ? `<input id="ph${i}" type="number" step="0.1" min="0" max="14" inputmode="decimal" placeholder="e.g. 7.0" aria-label="pH of ${s.name}">`
+      : `<select id="ph${i}" aria-label="pH of ${s.name}"><option value="">pH…</option>${Array.from({ length:15 }, (_, k) => `<option value="${k}">${k}</option>`).join('')}</select>`;
+    tr.innerHTML = `<td><b>${prefix}</b>${s.name}</td><td id="obs${i}" class="muted">Not observed yet</td><td>${phCell}</td>
+      <td><select id="cat${i}" aria-label="Type of ${s.name}"><option value="">Choose…</option><option>Acidic</option><option>Neutral</option><option>Alkaline</option></select></td>
+      <td><button class="btn light" id="chk${i}">Check</button><span class="st" id="st${i}"></span></td>`;
+    tb.appendChild(tr);
+    tr.querySelector('#chk' + i).addEventListener('click', () => checkRow(i));
+  });
+}
+function updateTable(){
+  CONFIG.substances.forEach((s, i) => {
+    const cell = $('#obs' + i); if (!cell) return;
+    let html = null;
+    if (S.tab === 'ui'){ const t = S.tubes[i]; if (t.observed || t.recorded){ const c = tubeFinalColour(t); html = `<span class="swatch" style="background:${c}"></span>${CONFIG.colours.names[Math.round(s.pH)]}`; } }
+    else if (S.tab === 'paper'){ const w = S.objs.plate.wells[i]; if (w.wet){ html = `<span class="swatch" style="background:${CONFIG.colourAt('paper', s.pH)}"></span>${CONFIG.colours.names[Math.round(s.pH)]}`; } }
+    else { const bk = S.objs['bk'+i]; if (bk.recorded) html = `<b>${bk.recordedReading}</b>`; else if (S.meterRead && S.meterRead.bk === bk.id) html = S.meterRead.stable ? `<b>${S.meterRead.target.toFixed(2)}</b> (stable)` : 'Stabilising…'; }
+    if (html){ cell.innerHTML = html; cell.classList.remove('muted'); } else if (!cell.classList.contains('muted')){ cell.textContent = 'Not observed yet'; cell.classList.add('muted'); }
+  });
+}
+function checkRow(i){
+  if (!S.goggles){ lockedWarn(); return; }
+  const s = CONFIG.substances[i];
+  const phEl = $('#ph' + i), catEl = $('#cat' + i);
+  let target, obj, tol, refPH;
+  if (S.tab === 'ui'){
+    const t = S.tubes[i]; obj = t; if (t.recorded) return;
+    if (!t.cur || t.ind < V.indicatorDrops || !t.mixed || t.over){ warn(`Finish the earlier steps for tube ${t.letter} first (2 cm³, 3 drops of indicator, shake).`); return; }
+    if (!t.onTile){ err(t, CONFIG.msg.tileFirst); updateAll(); return; }
+    tol = CONFIG.tolerance.colour; refPH = s.pH;
+  } else if (S.tab === 'paper'){
+    const pl = S.objs.plate, w = pl.wells[i]; obj = pl; target = w; if (w.recorded) return;
+    if (!w.wet){ warn(`Test hole ${i + 1} first: pH paper + 2 drops of ${s.name}.`); return; }
+    if (!pl.onTile){ err(pl, CONFIG.msg.plateTileFirst); updateAll(); return; }
+    tol = CONFIG.tolerance.colour; refPH = s.pH;
+  } else {
+    const bk = S.objs['bk'+i]; obj = bk; if (bk.recorded) return;
+    const r = S.meterRead;
+    if (!r || r.bk !== bk.id){ warn(`Dip the probe into the ${s.name} beaker and wait for "Stable".`); return; }
+    if (!r.stable){ warn('Wait until the meter shows "Stable" before recording.'); return; }
+    if (r.contam){ showMsg('err', 'This reading is wrong because the probe was contaminated. Rinse the probe at the tap and measure again.'); flash(bk, false); return; }
+    tol = CONFIG.tolerance.meter; refPH = r.target;
+  }
+  if (phEl.value === '' || catEl.value === ''){ warn('Enter the pH and choose Acidic / Neutral / Alkaline first.'); return; }
+  const v = parseFloat(phEl.value);
+  const phOk = !isNaN(v) && Math.abs(v - refPH) <= tol + 1e-9;
+  const cat = CONFIG.classify(s.pH), catOk = catEl.value === cat;
+  if (phOk && catOk){
+    if (S.tab === 'ui') S.tubes[i].recorded = true;
+    else if (S.tab === 'paper') target.recorded = true;
+    else { obj.recorded = true; obj.recordedReading = refPH.toFixed(2); }
+    phEl.disabled = catEl.disabled = true; $('#chk' + i).disabled = true;
+    $('#st' + i).textContent = '✓'; $('#st' + i).className = 'st ok'; $('#row' + i).classList.add('done');
+    ok(obj, `Correct! ${s.name} has pH about ${S.tab === 'meter' ? refPH.toFixed(2) : s.pH} — it is ${cat.toLowerCase()}.` + (S.tab === 'meter' ? ' Rinse the probe before the next beaker.' : ''));
+    checkComplete();
+  } else {
+    $('#st' + i).textContent = '✗'; $('#st' + i).className = 'st bad';
+    let why = [];
+    if (!phOk) why.push(S.tab === 'meter' ? `Read the number on the meter screen carefully (accepted: ±${tol}).` : 'Compare the colour with the colour chart again.');
+    if (!catOk) why.push('Remember: pH < 7 is acidic, pH = 7 is neutral, pH > 7 is alkaline.');
+    err(obj, `Not quite for ${s.name}. ` + why.join(' '));
+  }
+  updateAll();
+}
+function allRecorded(){
+  if (S.tab === 'ui') return S.tubes.every(t => t.recorded);
+  if (S.tab === 'paper') return S.objs.plate.wells.every(w => w.recorded);
+  return [0,1,2,3,4].every(i => S.objs['bk'+i].recorded);
+}
+function checkComplete(){
+  if (!allRecorded()) return;
+  const n = S.stats.ok + S.stats.err;
+  S.completed[S.tab] = { acc:accuracy(), ok:S.stats.ok, total:n, err:S.stats.err };
+  document.querySelector(`#tabs button[data-tab="${S.tab}"] .done`).textContent = '✓';
+  const names = { ui:'Universal Indicator', paper:'pH Paper', meter:'pH Meter' };
+  const done = Object.keys(S.completed).length;
+  const unlocked = CONFIG.quizUnlock === 'any' ? done >= 1 : done >= 3;
+  $('#summary').innerHTML = `<div class="card" style="margin-top:10px"><h2>${names[S.tab]} complete!</h2>
+    <div><b>Step accuracy:</b> ${S.stats.ok} / ${n} = ${accuracy()}%</div><div><b>Errors:</b> ${S.stats.err}</div>
+    <div class="muted" style="margin-top:6px">${unlocked ? 'The quiz is now open below.' : `Complete all three tabs to unlock the quiz (${done}/3 done).`}</div></div>`;
+  showMsg('ok', `Experiment complete! Step accuracy ${accuracy()}%, errors: ${S.stats.err}.`);
+  if (unlocked) renderQuiz();
+}
+function renderQuiz(){
+  const q = $('#quiz'); q.hidden = false;
+  const res = Object.entries(S.completed).map(([k, v]) => `<li>${{ ui:'Universal Indicator', paper:'pH Paper', meter:'pH Meter' }[k]}: accuracy ${v.acc}% (${v.ok}/${v.total}), errors ${v.err}</li>`).join('');
+  q.innerHTML = `<h2>Quiz</h2><ul>${res}</ul>` + CONFIG.quiz.map((it, qi) => `<div class="q" id="q${qi}"><h3>${it.q}</h3><div class="opts">${it.options.map((o, oi) => `<button class="opt" data-q="${qi}" data-o="${oi}">${String.fromCharCode(65 + oi)}. ${o}</button>`).join('')}</div><div class="expl" id="ex${qi}"></div></div>`).join('') + '<div id="quizEnd"></div>';
+  q.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => answer(+b.dataset.q, +b.dataset.o)));
+  Object.entries(S.quiz).forEach(([qi, oi]) => markAnswer(+qi, oi));
+  finishQuiz();
+}
+function answer(qi, oi){ if (S.quiz[qi] != null) return; S.quiz[qi] = oi; markAnswer(qi, oi); finishQuiz(); }
+function markAnswer(qi, oi){
+  const it = CONFIG.quiz[qi], right = oi === it.answer;
+  document.querySelectorAll(`#q${qi} .opt`).forEach(b => { const o = +b.dataset.o; b.disabled = true; if (o === it.answer) b.classList.add('right'); else if (o === oi) b.classList.add('wrong'); });
+  const ex = $('#ex' + qi); ex.className = 'expl ' + (right ? 'ok' : 'bad'); ex.textContent = (right ? '✓ Correct. ' : '✗ Incorrect. ') + it.explain;
+}
+function finishQuiz(){
+  const n = Object.keys(S.quiz).length; if (n < CONFIG.quiz.length) return;
+  const score = CONFIG.quiz.filter((it, i) => S.quiz[i] === it.answer).length;
+  const c = CONFIG.compare;
+  $('#quizEnd').innerHTML = `<h2 style="margin:6px 0">Total score: ${score} / ${CONFIG.quiz.length}</h2><h2 style="margin-top:12px">Compare the three apparatus</h2>
+    <table class="cmp"><thead><tr>${c.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${c.rows.map(r => `<tr>${r.map((d, k) => k ? `<td>${d}</td>` : `<td><b>${d}</b></td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+/* pH colour chart (always visible) */
+function buildChart(){
+  const ch = $('#chart');
+  let rows = '';
+  for (let p = 0; p <= 14; p++) rows += `<tr><td class="n">${p}</td><td class="c c-ui" style="background:${CONFIG.colours.ui[p]}"></td><td class="c c-paper" style="background:${CONFIG.colours.paper[p]}"></td></tr>`;
+  ch.innerHTML = `<h2>pH colour chart</h2><table><thead><tr><th>pH</th><th class="c-ui">UI</th><th class="c-paper">Paper</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="legend"><div><b>UI</b> = Universal indicator</div><div><i style="background:#e01b1f"></i>0–6 Acidic</div><div><i style="background:#3fae2f"></i>7 Neutral</div><div><i style="background:#2a5cb2"></i>8–14 Alkaline</div></div>`;
+}
+
+function updateAll(){ renderSteps(); updateStats(); updateTable(); }
+
+/* =====================================================================
+   INIT / RESET
+   ===================================================================== */
+function initTab(tab){
+  S.timers.forEach(clearTimeout); S.timers = []; clearInterval(S.meterTimer); tweens.clear(); drag = null;
+  Object.assign(S, { tab, objs:{}, stats:{ ok:0, err:0 }, sel:null, prevDone:[], tubes:[], bottles:[], meterRead:null, shakeBtn:null, wire:null });
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $('#chart').className = 'hl-' + tab;
+  measure();
+  lab.innerHTML = '';
+  defs = el('defs', {}, lab);
+  ['bg','low','mid','wire','top','fx'].forEach(n => L[n] = el('g', { id:'L_' + n }, lab));
+  drawDesk(); drawShelf(); drawTap();
+  if (tab === 'ui') buildUI(); else if (tab === 'paper') buildPaper(); else buildMeter();
+  if (tab === 'ui') makeShakeBtn();
+  updateTile();
+  $('#steps').innerHTML = ''; $('#log').innerHTML = ''; $('#summary').innerHTML = '';
+  buildTable();
+  lab.classList.toggle('locked', !S.goggles);
+  if (S.goggles) showMsg('info', CONFIG.intro[tab]); else showMsg('err', CONFIG.msg.gogglesFirst + ' Drag the goggles onto the person at the top right.');
+  updateAll();
+}
+function onResize(){
+  const old = S.W; measure(); if (S.W === old) return;
+  S.bench.setAttribute('width', S.W);
+  S.tapG.setAttribute('transform', `translate(${S.tapX},0)`);
+  Object.values(S.objs).forEach(o => { if (o.drag && o.g){ o.x = Math.min(o.x, S.W - 60); place(o); } });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  lab = $('#lab');
+  lab.addEventListener('pointerdown', onPointerDown);
+  lab.addEventListener('pointermove', onPointerMove);
+  lab.addEventListener('pointerup', onPointerUp);
+  lab.addEventListener('pointercancel', onPointerUp);
+  document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => { if (b.dataset.tab !== S.tab) initTab(b.dataset.tab); }));
+  $('#restart').addEventListener('click', () => initTab(S.tab));
+  window.addEventListener('resize', () => { clearTimeout(S.rz); S.rz = setTimeout(onResize, 150); });
+  buildPerson(); buildChart();
+  const placeChart = () => { const t = $('header').offsetHeight + 16; const c = $('#chart'); c.style.top = t + 'px'; c.style.maxHeight = `calc(100vh - ${t + 8}px)`; };
+  placeChart(); window.addEventListener('resize', placeChart);
+  initTab('ui');
+});
+</script>
+</body>
+</html>
