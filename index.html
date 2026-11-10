@@ -400,9 +400,9 @@ function drawShelf(){
       el('rect', { x:-12, y:-12, width:24, height:24, fill:'#fff', stroke:'#c62828', 'stroke-width':3, transform:`translate(${hx},${hy}) rotate(45)` }, b);
       txt(b, hx, hy + 7, '!', { 'text-anchor':'middle', 'font-size':18, 'font-weight':900, fill:'#c62828' });
     }
-    const lh = 21, h = s.shelf.length*lh + 8;                                                       // large white label
-    el('rect', { x:8, y:sy+80, width:174, height:h, rx:4, fill:'#fff', stroke:'#111', 'stroke-width':1.5 }, b);
-    s.shelf.forEach((line, k) => txt(b, 95, sy + 80 + 4 + lh*(k+1) - 5, line, LBL18));
+    const lh = 20, h = s.shelf.length*lh + 8;                                                       // large white label
+    el('rect', { x:8, y:sy+77, width:174, height:h, rx:4, fill:'#fff', stroke:'#111', 'stroke-width':1.5 }, b);
+    s.shelf.forEach((line, k) => txt(b, 95, sy + 77 + 4 + lh*(k+1) - 5, line, LBL18));
     o.disp = o.vol; o.apply(o.vol);
     S.bottles.push(o); S.objs[o.id] = o;
   });
@@ -720,7 +720,7 @@ function info(text){ showMsg('info', text); }
 function accuracy(){ const n = S.stats.ok + S.stats.err; return n ? Math.round(S.stats.ok / n * 100) : 100; }
 function updateStats(){
   const n = S.stats.ok + S.stats.err;
-  $('#stats').textContent = `Step accuracy: ${S.stats.ok} / ${n} correct (${accuracy()}%) · Errors: ${S.stats.err}`;
+  $('#stats').textContent = n ? `Step accuracy: ${S.stats.ok} / ${n} correct (${accuracy()}%) · Errors: ${S.stats.err}` : 'Step accuracy: no steps yet · Errors: 0';
 }
 
 /* =====================================================================
